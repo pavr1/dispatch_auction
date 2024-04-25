@@ -21,9 +21,9 @@ func New(bids []*models.Bid, log *logrus.Logger) *Auction {
 	}
 }
 
-func (a *Auction) StartAuction() error {
+func (a *Auction) StartAuction() (*models.Bid, error) {
 	if len(a.Bids) == 0 {
-		return errors.New("bids are empty")
+		return nil, errors.New("bids are empty")
 	}
 
 	name, bestBid := a.getBestBid()
@@ -34,7 +34,7 @@ func (a *Auction) StartAuction() error {
 
 	a.log.WithFields(logrus.Fields{"Name": bid.Name, "Amount": bid.CurrentBid}).Info("WINNING BID!!!")
 
-	return nil
+	return bid, nil
 }
 
 func (a *Auction) processBids() *models.Bid {
