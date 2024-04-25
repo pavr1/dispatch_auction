@@ -2,8 +2,6 @@
 
 This is a small application that gets the best bid based on certain criteria requested by client.
 
-Watch list functionality is the first feature.
-
 ## Quick Start
 
 `main.go` page does nothing on its own, to run this please execut the unit tests by running the following command `go test -v`
