@@ -11,50 +11,57 @@ import (
 func main() {
 	initializeLogging()
 
-	bids := map[string]*models.Bid{}
-
-	bids["Sasha"] = &models.Bid{
-		StartingBid:  50.0,
-		CurrentBid:   50.0,
-		MaxBid:       60.0,
-		BidIncrement: 3.0,
-		Status:       "open",
-	}
-	bids["John"] = &models.Bid{
-		StartingBid:  60.0,
-		CurrentBid:   60.0,
-		MaxBid:       82.0,
-		BidIncrement: 2.0,
-		Status:       "open",
-	}
-	bids["Pat"] = &models.Bid{
-		StartingBid:  55.0,
-		CurrentBid:   55.0,
-		MaxBid:       85.0,
-		BidIncrement: 5.0,
-		Status:       "open",
+	bids := []*models.Bid{
+		{
+			Name:         "Sasha",
+			StartingBid:  50.0,
+			CurrentBid:   50.0,
+			MaxBid:       80.0,
+			BidIncrement: 3.0,
+			Status:       "open",
+		},
+		{
+			Name:         "John",
+			StartingBid:  60.0,
+			CurrentBid:   60.0,
+			MaxBid:       82.0,
+			BidIncrement: 2.0,
+			Status:       "open",
+		},
+		{
+			Name:         "Pat",
+			StartingBid:  55.0,
+			CurrentBid:   55.0,
+			MaxBid:       85.0,
+			BidIncrement: 5.0,
+			Status:       "open",
+		},
 	}
 
 	StartAuction(bids)
 }
 
-func StartAuction(bids map[string]*models.Bid) error {
+func StartAuction(bids []*models.Bid) error {
 	if len(bids) == 0 {
 		return errors.New("bids are empty")
 	}
 
 	bestBidKey, bestBidAmount := setBestBid(bids)
-	processBids(bestBidKey, bestBidAmount, bids)
+	bid := processBids(bestBidKey, bestBidAmount, bids)
+
+	log.WithFields(log.Fields{"Bidder": bid.Name, "Amount": bid.CurrentBid}).Info("WINNING BID!!!")
 
 	return nil
 }
 
-func processBids(bestBidKey *string, bestBidAmount *float64, bids map[string]*models.Bid) {
-	log.WithFields(log.Fields{"Best Bid": bestBidAmount}).Info("Processing bids...")
+func processBids(bestBidKey string, bestBidAmount float64, bids []*models.Bid) *models.Bid {
+	if len(bids) == 1 {
+		return bids[0]
+	}
 
-	for k, v := range bids {
+	for _, v := range bids {
 		//if the key is the same, then skip
-		if k == *bestBidKey {
+		if v.Name == bestBidKey {
 			continue
 		}
 
@@ -63,23 +70,42 @@ func processBids(bestBidKey *string, bestBidAmount *float64, bids map[string]*mo
 			continue
 		}
 
-		log.WithFields(log.Fields{"Bidder": k, "Current Amount": v.CurrentBid, "Best Bid": bestBidAmount}).Info("Processing bid!")
+		//log.WithFields(log.Fields{"Bidder": v.Name, "Current Amount": v.CurrentBid, "Best Bid": bestBidAmount}).Info("Processing bid!")
 
-		if v.CurrentBid < *bestBidAmount {
-			log.WithFields(log.Fields{"Bidder": k, "Current Amount": v.CurrentBid, "Best Bid": bestBidAmount}).Info("Bid below offer, increasing...")
+		if v.CurrentBid < bestBidAmount {
+			log.WithFields(log.Fields{"Bidder": v.Name, "Current Amount": v.CurrentBid, "Best Bid": bestBidAmount}).Info("Bid below offer, increasing...")
 
-			incrementBid(k, bestBidKey, bestBidAmount, v)
+			incrementBid(v.Name, bestBidKey, bestBidAmount, v)
 		}
+
+		bestBidKey, bestBidAmount = setBestBid(bids)
 	}
+
+	bids = cleanUpClosedBids(bids)
+
+	return processBids(bestBidKey, bestBidAmount, bids)
 }
 
-func incrementBid(bidder string, bestBidKey *string, bestBidAmount *float64, bid *models.Bid) {
-	for {
-		if bid.CurrentBid > *bestBidAmount {
-			log.WithFields(log.Fields{"Bidder": bidder, "Amount Incremented": bid.CurrentBid, "Best Bid": bestBidAmount}).Info("Bid Incremented!")
+func cleanUpClosedBids(bids []*models.Bid) []*models.Bid {
+	for i := len(bids) - 1; i >= 0; i-- {
+		bid := bids[i]
 
-			bestBidKey = &bidder
-			bestBidAmount = &bid.CurrentBid
+		if bid.Status == "closed" {
+			bids = deleteElement(bids, i)
+		}
+	}
+
+	return bids
+}
+
+func deleteElement(slice []*models.Bid, index int) []*models.Bid {
+	return append(slice[:index], slice[index+1:]...)
+}
+
+func incrementBid(bidder string, bestBidKey string, bestBidAmount float64, bid *models.Bid) {
+	for {
+		if bid.CurrentBid > bestBidAmount {
+			log.WithFields(log.Fields{"Bidder": bidder, "Amount Incremented": bid.CurrentBid, "Best Bid": bestBidAmount, "Status": bid.Status}).Info("Bid Incremented!")
 
 			return
 		}
@@ -97,24 +123,24 @@ func incrementBid(bidder string, bestBidKey *string, bestBidAmount *float64, bid
 	}
 }
 
-func setBestBid(bids map[string]*models.Bid) (*string, *float64) {
+func setBestBid(bids []*models.Bid) (string, float64) {
 	key := ""
 	var bestBid float64
 
-	for k, v := range bids {
+	for _, v := range bids {
 		if v.Status == "closed" {
 			continue
 		}
 
 		if bestBid < v.CurrentBid {
-			key = k
+			key = v.Name
 			bestBid = v.CurrentBid
 		}
 	}
 
 	log.WithFields(log.Fields{"Bidder": key, "Best Bid": bestBid}).Info("Best bid found")
 
-	return &key, &bestBid
+	return key, bestBid
 }
 
 func initializeLogging() {
