@@ -10,6 +10,12 @@ This is a small application that gets the best bid based on certain criteria req
 
 To access to this functionality `Auction` struct has to be instantiated with the `pkg.New([]*models.Bid, *logrus.Logger)` function.
 
-### Run
+## Run
 
 To start the process call `Auction.StartAuction()`
+
+## Improvement areas
+
+- CI/CD implementation
+- Restful API exposure
+- Mocking Unit tests
